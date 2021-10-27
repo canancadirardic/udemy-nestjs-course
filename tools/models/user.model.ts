@@ -13,4 +13,5 @@ export class UserModel {
     audit:AuditModel;
     roles:RoleModel[];
     groups:GroupModel[];
+    birtdate:Date;
 }
