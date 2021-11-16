@@ -1,45 +1,45 @@
 import { Injectable } from '@nestjs/common';
-import { UserCreateDto } from 'tools/dtos/user.dto';
-import { UserModel } from 'tools/models/user.model';
-
-const result : UserModel[] = [];
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { UserCreateDto, UserUpdateDto } from 'tools/dtos/user.dto';
+import { AuditModel } from 'tools/models/audit.model';
+import { UserModel, UserSchema } from 'tools/models/user.model';
 
 @Injectable()
 export class UserService {
-  getAllUsers() : UserModel[]{
-    if(result.length === 0){
-      this.createMockUser({
-        birtdate : new Date(),
-        name : "Canan",
-        surname : "Cadirardic",
-        password : "123123",
-        email : "canancadirardic@gmail.com"
-      });      
-    }
-    return result;
+  constructor(
+    @InjectModel('User') private readonly userMongo: Model<UserModel>,
+  ){}
+
+  async create(user: UserCreateDto): Promise<UserModel>{
+    const audit = new AuditModel();
+    audit.active = true;
+    audit.createdBy = "Admin";
+    audit.createdDate = new Date();
+    
+    const createUser = new this.userMongo({...user,...audit});
+
+    return await createUser.save();
   }
 
-  createUser(body:UserCreateDto){
-    const isExist = result.find(x=> {x.email === body.email});
-    if(isExist){
-        isExist;
-    }
-    else{
-      this.createMockUser(body);
-      return result.slice(result.length -1, result.length);
-    }
+  async findAll() : Promise<UserModel[]> {
+    return await this.userMongo.find().exec();
   }
 
-  private createMockUser(data: any){
-    const user: UserModel = new UserModel();
-    user.birtdate = data.birtdate;
-    user.name = data.name;
-    user.surname = data.surname;
-    user.password = data.password;
-    user.email = data.email;
+  async findOne( id: string ) : Promise<UserModel> {
+    return await this.userMongo.findById({ _id:id}).exec();
+  }
+ 
+  async delete( id: string ) : Promise<UserModel> {
+    return await this.userMongo.findByIdAndRemove({ _id:id}).exec();
+  }
 
-    user.id = (Math.floor(Math.random()* 60) +1).toString();
+  async update( id: string, user:UserUpdateDto ) : Promise<UserModel> {
+    let newModel = this.userMongo.findById({_id : id}).exec();
+    newModel = { ...newModel,...user};
 
-    result.push(user);
+    return await this.userMongo
+      .findByIdAndUpdate( id, newModel, { new:true })
+      .exec();
   }
 }
